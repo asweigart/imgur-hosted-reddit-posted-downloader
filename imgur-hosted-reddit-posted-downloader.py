@@ -15,7 +15,7 @@ elif len(sys.argv) >= 2:
 		MIN_SCORE = sys.argv[2]
 
 
-imagePattern = re.compile(r'<a href="(http://i.imgur.com/(.*?))(\?.*?)?" target="_blank">View full resolution</a>')
+imageInAlbumPattern = re.compile(r'<a href="(//i.imgur.com/(.*?))(\?.*?)?" target="_blank">View full resolution</a>')
 imgTagPattern = re.compile(r'<img src="(http://i.imgur.com/(.*?))(\?.*?)?"')
 imgurUrlPattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
@@ -47,7 +47,7 @@ for post in posts:
 		albumId = post.url[len('http://imgur.com/a/'):]
 		htmlSource = requests.get(post.url).text
 
-		matches = list(frozenset(imagePattern.findall(htmlSource))) # turn this into a unique list using a frozenset
+		matches = list(frozenset(imageInAlbumPattern.findall(htmlSource))) # turn this into a unique list using a frozenset
 		for match in matches:
 			if 'albumview.gif?a=' in match[0]:
 				continue # this is not an actual image url
