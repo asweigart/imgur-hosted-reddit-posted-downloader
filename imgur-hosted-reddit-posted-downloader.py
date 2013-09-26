@@ -20,6 +20,13 @@ imgTagPattern = re.compile(r'<img src="(http://i.imgur.com/(.*?))(\?.*?)?"')
 imgurUrlPattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
 
+def downloadImage(response, localFileName):
+	if response.status_code == 200:
+		print('Downloading %s...' % (localFileName))
+		with open(localFileName, 'wb') as fo:
+			for chunk in response.iter_content(4096):
+				fo.write(chunk)
+
 # Connect to reddit and download the subreddit front page
 r = praw.Reddit(user_agent='CHANGE THIS TO A UNIQUE VALUE') # Note: Be sure to change the user-agent to something unique.
 submissions = r.get_subreddit(targetSubreddit).get_hot(limit=25)
@@ -54,11 +61,7 @@ for submission in submissions:
 			response = requests.get('http:' + match[0])
 			localFileName = 'reddit_%s_%s_album_%s_imgur_%s' % (targetSubreddit, submission.id, albumId, match[1])
 
-			if response.status_code == 200:
-				print('Downloading %s...' % (localFileName))
-				with open(localFileName, 'wb') as fo:
-					for chunk in response.iter_content(4096):
-						fo.write(chunk)
+			downloadImage(response, localFileName)
 
 	elif 'http://i.imgur.com/' in submission.url:
 		# The URL is a direct link to the image.
@@ -71,11 +74,7 @@ for submission in submissions:
 			imgurFilename = imgurFilename[:imgurFilename.find('?')]
 		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, imgurFilename)
 
-		if response.status_code == 200:
-			print('Downloading %s...' % (localFileName))
-			with open(localFileName, 'wb') as fo:
-				for chunk in response.iter_content(4096):
-					fo.write(chunk)
+		downloadImage(response, localFileName)
 
 	elif 'http://imgur.com/' in submission.url:
 		# This is an Imgur page with a single image.
@@ -87,8 +86,4 @@ for submission in submissions:
 		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, mo.group(2))
 		response = requests.get(mo.group(1))
 
-		if response.status_code == 200:
-			print('Downloading %s...' % (localFileName))
-			with open(localFileName, 'wb') as fo:
-				for chunk in response.iter_content(4096):
-					fo.write(chunk)
+		downloadImage(response, localFileName)
