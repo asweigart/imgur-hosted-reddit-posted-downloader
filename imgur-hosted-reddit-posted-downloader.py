@@ -22,7 +22,7 @@ imgurUrlPattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
 # Connect to reddit and download the subreddit front page
 r = praw.Reddit(user_agent='CHANGE THIS TO A UNIQUE VALUE') # Note: Be sure to change the user-agent to something unique.
-posts = r.get_subreddit(targetSubreddit).get_hot(limit=25)
+submissions = r.get_subreddit(targetSubreddit).get_hot(limit=25)
 # Or use one of these functions:
 #                                       .get_top_from_year(limit=25)
 #                                       .get_top_from_month(limit=25)
@@ -31,21 +31,21 @@ posts = r.get_subreddit(targetSubreddit).get_hot(limit=25)
 #                                       .get_top_from_hour(limit=25)
 #                                       .get_top_from_all(limit=25)
 
-# Process all the posts from the front page
-for post in posts:
-	# Check for all the cases where we will skip a post:
-	if "imgur.com/" not in post.url:
-		continue # skip non-imgur posts
-	if post.score < MIN_SCORE:
-		continue # skip posts that haven't even reached 100 (thought this should be rare if we're collecting the "hot" posts)
-	if len(glob.glob('reddit_%s_*' % (post.id))) > 0:
-		continue # we've already downloaded files for this reddit post
+# Process all the submissions from the front page
+for submission in submissions:
+	# Check for all the cases where we will skip a submission:
+	if "imgur.com/" not in submission.url:
+		continue # skip non-imgur submissions
+	if submission.score < MIN_SCORE:
+		continue # skip submissions that haven't even reached 100 (thought this should be rare if we're collecting the "hot" submission)
+	if len(glob.glob('reddit_%s_*' % (submission.id))) > 0:
+		continue # we've already downloaded files for this reddit submission
 
 
-	if 'http://imgur.com/a/' in post.url:
-		# This is an album post.
-		albumId = post.url[len('http://imgur.com/a/'):]
-		htmlSource = requests.get(post.url).text
+	if 'http://imgur.com/a/' in submission.url:
+		# This is an album submission.
+		albumId = submission.url[len('http://imgur.com/a/'):]
+		htmlSource = requests.get(submission.url).text
 
 		matches = list(frozenset(imageInAlbumPattern.findall(htmlSource))) # turn this into a unique list using a frozenset
 		for match in matches:
@@ -53,7 +53,7 @@ for post in posts:
 				continue # this is not an actual image url
 
 			response = requests.get(match[0])
-			localFileName = 'reddit_%s_album_%s_imgur_%s' % (post.id, albumId, match[1])
+			localFileName = 'reddit_%s_album_%s_imgur_%s' % (submission.id, albumId, match[1])
 
 			if response.status_code == 200:
 				print('Downloading %s...' % (localFileName))
@@ -61,16 +61,16 @@ for post in posts:
 					for chunk in response.iter_content(4096):
 						fo.write(chunk)
 
-	elif 'http://i.imgur.com/' in post.url:
+	elif 'http://i.imgur.com/' in submission.url:
 		# The URL is a direct link to the image.
-		response = requests.get(post.url)
-		mo = imgurUrlPattern.search(post.url)
+		response = requests.get(submission.url)
+		mo = imgurUrlPattern.search(submission.url)
 
 		imgurFilename = mo.group(2)
 		if '?' in imgurFilename:
 			# The regex doesn't catch a "?" at the end of the filename, so we remove it here.
 			imgurFilename = imgurFilename[:imgurFilename.find('?')]
-		localFileName = 'reddit_%s_album_None_imgur_%s' % (post.id, imgurFilename)
+		localFileName = 'reddit_%s_album_None_imgur_%s' % (submission.id, imgurFilename)
 
 		if response.status_code == 200:
 			print('Downloading %s...' % (localFileName))
@@ -78,14 +78,14 @@ for post in posts:
 				for chunk in response.iter_content(4096):
 					fo.write(chunk)
 
-	elif 'http://imgur.com/' in post.url:
+	elif 'http://imgur.com/' in submission.url:
 		# This is an Imgur page with a single image.
-		htmlSource = requests.get(post.url).text # download the image's page
+		htmlSource = requests.get(submission.url).text # download the image's page
 		mo = imgTagPattern.search(htmlSource)
 		if mo is None:
 			continue
 
-		localFileName = 'reddit_%s_album_None_imgur_%s' % (post.id, mo.group(2))
+		localFileName = 'reddit_%s_album_None_imgur_%s' % (submission.id, mo.group(2))
 		response = requests.get(mo.group(1))
 
 		if response.status_code == 200:
