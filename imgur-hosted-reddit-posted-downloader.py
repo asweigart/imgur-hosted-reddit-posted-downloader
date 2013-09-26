@@ -20,7 +20,8 @@ imgTagPattern = re.compile(r'<img src="(http://i.imgur.com/(.*?))(\?.*?)?"')
 imgurUrlPattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
 
-def downloadImage(response, localFileName):
+def downloadImage(imageUrl, localFileName):
+	response = requests.get(imageUrl)
 	if response.status_code == 200:
 		print('Downloading %s...' % (localFileName))
 		with open(localFileName, 'wb') as fo:
@@ -58,23 +59,20 @@ for submission in submissions:
 			if 'albumview.gif?a=' in match[0]:
 				continue # this is not an actual image url
 
-			response = requests.get('http:' + match[0])
 			localFileName = 'reddit_%s_%s_album_%s_imgur_%s' % (targetSubreddit, submission.id, albumId, match[1])
-
-			downloadImage(response, localFileName)
+			downloadImage('http:' + match[0], localFileName)
 
 	elif 'http://i.imgur.com/' in submission.url:
 		# The URL is a direct link to the image.
-		response = requests.get(submission.url)
 		mo = imgurUrlPattern.search(submission.url)
 
 		imgurFilename = mo.group(2)
 		if '?' in imgurFilename:
 			# The regex doesn't catch a "?" at the end of the filename, so we remove it here.
 			imgurFilename = imgurFilename[:imgurFilename.find('?')]
-		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, imgurFilename)
 
-		downloadImage(response, localFileName)
+		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, imgurFilename)
+		downloadImage(submission.url, localFileName)
 
 	elif 'http://imgur.com/' in submission.url:
 		# This is an Imgur page with a single image.
@@ -84,6 +82,4 @@ for submission in submissions:
 			continue
 
 		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, mo.group(2))
-		response = requests.get(mo.group(1))
-
-		downloadImage(response, localFileName)
+		downloadImage(mo.group(1), localFileName)
