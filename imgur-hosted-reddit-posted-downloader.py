@@ -12,7 +12,7 @@ elif len(sys.argv) >= 2:
 	targetSubreddit = sys.argv[1]
 	if len(sys.argv) >= 3:
 		# the desired minimum score was also specified:
-		MIN_SCORE = sys.argv[2]
+		MIN_SCORE = int(sys.argv[2])
 
 
 imageInAlbumPattern = re.compile(r'<a href="(//i.imgur.com/(.*?))(\?.*?)?" target="_blank">View full resolution</a>')
@@ -38,9 +38,8 @@ for submission in submissions:
 		continue # skip non-imgur submissions
 	if submission.score < MIN_SCORE:
 		continue # skip submissions that haven't even reached 100 (thought this should be rare if we're collecting the "hot" submission)
-	if len(glob.glob('reddit_%s_*' % (submission.id))) > 0:
+	if len(glob.glob('reddit_%s_%s_*' % (targetSubreddit, submission.id))) > 0:
 		continue # we've already downloaded files for this reddit submission
-
 
 	if 'http://imgur.com/a/' in submission.url:
 		# This is an album submission.
@@ -52,8 +51,8 @@ for submission in submissions:
 			if 'albumview.gif?a=' in match[0]:
 				continue # this is not an actual image url
 
-			response = requests.get(match[0])
-			localFileName = 'reddit_%s_album_%s_imgur_%s' % (submission.id, albumId, match[1])
+			response = requests.get('http:' + match[0])
+			localFileName = 'reddit_%s_%s_album_%s_imgur_%s' % (targetSubreddit, submission.id, albumId, match[1])
 
 			if response.status_code == 200:
 				print('Downloading %s...' % (localFileName))
@@ -70,7 +69,7 @@ for submission in submissions:
 		if '?' in imgurFilename:
 			# The regex doesn't catch a "?" at the end of the filename, so we remove it here.
 			imgurFilename = imgurFilename[:imgurFilename.find('?')]
-		localFileName = 'reddit_%s_album_None_imgur_%s' % (submission.id, imgurFilename)
+		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, imgurFilename)
 
 		if response.status_code == 200:
 			print('Downloading %s...' % (localFileName))
@@ -85,7 +84,7 @@ for submission in submissions:
 		if mo is None:
 			continue
 
-		localFileName = 'reddit_%s_album_None_imgur_%s' % (submission.id, mo.group(2))
+		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, mo.group(2))
 		response = requests.get(mo.group(1))
 
 		if response.status_code == 200:
