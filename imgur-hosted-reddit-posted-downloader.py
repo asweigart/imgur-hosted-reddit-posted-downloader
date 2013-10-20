@@ -1,4 +1,5 @@
 import re, praw, requests, os, glob, sys
+from bs4 import BeautifulSoup
 
 MIN_SCORE = 100 # the default minimum score before it is downloaded
 
@@ -15,8 +16,6 @@ elif len(sys.argv) >= 2:
 		MIN_SCORE = int(sys.argv[2])
 
 
-imageInAlbumPattern = re.compile(r'<a href="(//i.imgur.com/(.*?))(\?.*?)?" target="_blank">View full resolution</a>')
-imgTagPattern = re.compile(r'<img src="(http://i.imgur.com/(.*?))(\?.*?)?"')
 imgurUrlPattern = re.compile(r'(http://i.imgur.com/(.*))(\?.*)?')
 
 
@@ -54,17 +53,20 @@ for submission in submissions:
 		albumId = submission.url[len('http://imgur.com/a/'):]
 		htmlSource = requests.get(submission.url).text
 
-		matches = list(frozenset(imageInAlbumPattern.findall(htmlSource))) # turn this into a unique list using a frozenset
+		soup = BeautifulSoup(htmlSource)
+		matches = soup.select('.album-view-image-link a')
 		for match in matches:
-			if 'albumview.gif?a=' in match[0]:
-				continue # this is not an actual image url
-
-			localFileName = 'reddit_%s_%s_album_%s_imgur_%s' % (targetSubreddit, submission.id, albumId, match[1])
-			downloadImage('http:' + match[0], localFileName)
+			imageUrl = match['href']
+			if '?' in imageUrl:
+				imageFile = imageUrl[imageUrl.rfind('/') + 1:imageUrl.rfind('?')]
+			else:
+				imageFile = imageUrl[imageUrl.rfind('/') + 1:]
+			localFileName = 'reddit_%s_%s_album_%s_imgur_%s' % (targetSubreddit, submission.id, albumId, imageFile)
+			downloadImage('http:' + match['href'], localFileName)
 
 	elif 'http://i.imgur.com/' in submission.url:
 		# The URL is a direct link to the image.
-		mo = imgurUrlPattern.search(submission.url)
+		mo = imgurUrlPattern.search(submission.url) # using regex here instead of BeautifulSoup because we are pasing a url, not html
 
 		imgurFilename = mo.group(2)
 		if '?' in imgurFilename:
@@ -77,9 +79,17 @@ for submission in submissions:
 	elif 'http://imgur.com/' in submission.url:
 		# This is an Imgur page with a single image.
 		htmlSource = requests.get(submission.url).text # download the image's page
-		mo = imgTagPattern.search(htmlSource)
-		if mo is None:
-			continue
+		soup = BeautifulSoup(htmlSource)
+		imageUrl = soup.select('.image a')[0]['href']
+		if imageUrl.startswith('//'):
+			# if no schema is supplied in the url, prepend 'http:' to it
+			imageUrl = 'http:' + imageUrl
+		imageId = imageUrl[imageUrl.rfind('/') + 1:imageUrl.rfind('.')]
 
-		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, mo.group(2))
-		downloadImage(mo.group(1), localFileName)
+		if '?' in imageUrl:
+			imageFile = imageUrl[imageUrl.rfind('/') + 1:imageUrl.rfind('?')]
+		else:
+			imageFile = imageUrl[imageUrl.rfind('/') + 1:]
+
+		localFileName = 'reddit_%s_%s_album_None_imgur_%s' % (targetSubreddit, submission.id, imageFile)
+		downloadImage(imageUrl, localFileName)
